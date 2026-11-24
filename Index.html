@@ -1,0 +1,1353 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>मेरी दुकान — स्मार्ट और आसान हिसाब</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Noto Sans Devanagari', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(180deg, #eef2ff 0%, #f8fafc 320px, #f1f5f9 100%);
+      color: #0f172a;
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior-y: contain;
+    }
+    .tap-btn {
+      transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.16s ease, background-color 0.15s ease;
+    }
+    .tap-btn:active {
+      transform: scale(0.96);
+    }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 24px -6px rgba(30, 41, 59, 0.08), 0 2px 6px -1px rgba(30, 41, 59, 0.04);
+    }
+    .hero-monthly {
+      background: linear-gradient(135deg, #312e81 0%, #1d4ed8 55%, #2563eb 100%);
+      box-shadow: 0 14px 30px -8px rgba(37, 99, 235, 0.38);
+    }
+    .btn-sale-grad {
+      background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+      box-shadow: 0 10px 22px -6px rgba(16, 185, 129, 0.45);
+    }
+    .btn-exp-grad {
+      background: linear-gradient(135deg, #ea580c 0%, #f97316 100%);
+      box-shadow: 0 10px 22px -6px rgba(249, 115, 22, 0.42);
+    }
+    .btn-wh-grad {
+      background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+      box-shadow: 0 10px 22px -6px rgba(79, 70, 229, 0.4);
+    }
+    .nav-active-mob {
+      background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+      color: #3730a3;
+      font-weight: 800;
+      box-shadow: inset 0 0 0 1.5px #c7d2fe;
+    }
+    @keyframes popIn {
+      0% { opacity: 0; transform: translateY(8px) scale(0.98); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .animate-pop {
+      animation: popIn 0.22s ease-out forwards;
+    }
+    #pdf-render-stage {
+      position: fixed;
+      left: -9999px;
+      top: 0;
+      width: 794px;
+      background: #ffffff;
+      color: #0f172a;
+      padding: 36px;
+      font-family: 'Noto Sans Devanagari', system-ui, sans-serif;
+      z-index: -1;
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-28 md:pb-12">
+
+  <!-- Rich Trust-Blue Header (Psychology: Indigo/Blue = Trust & Clarity) -->
+  <header class="sticky top-0 z-30 bg-gradient-to-r from-indigo-800 via-blue-700 to-indigo-700 text-white shadow-lg">
+    <div class="max-w-3xl mx-auto px-4 py-3.5 flex items-center justify-between gap-2.5">
+      <button id="btn-edit-shop-name" class="flex items-center gap-2.5 text-left min-w-0 tap-btn" title="दुकान का नाम बदलें">
+        <div class="w-11 h-11 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center shrink-0 text-2xl shadow-inner">
+          🏪
+        </div>
+        <div class="min-w-0">
+          <h1 id="header-shop-name" class="text-lg sm:text-xl font-extrabold leading-tight truncate">मेरी दुकान</h1>
+          <p class="text-[11px] text-indigo-100/90 flex items-center gap-1">
+            <span>नाम बदलने के लिए टैप करें</span>
+            <i data-lucide="pencil" class="w-3 h-3"></i>
+          </p>
+        </div>
+      </button>
+
+      <!-- Desktop Navigation -->
+      <nav class="hidden md:flex items-center gap-1.5 bg-indigo-950/35 p-1.5 rounded-2xl border border-white/10" aria-label="मुख्य मेनू">
+        <button data-tab="hisab" class="desk-tab px-4 py-2 rounded-xl text-sm font-bold transition">💰 रोज़ का हिसाब</button>
+        <button data-tab="samaan" class="desk-tab px-4 py-2 rounded-xl text-sm font-bold transition relative">
+          📋 क्या लेना है <span id="desk-empty-badge" class="hidden ml-1 px-1.5 py-0.5 bg-rose-500 text-white rounded-full text-xs">0</span>
+        </button>
+        <button data-tab="wholesale" class="desk-tab px-4 py-2 rounded-xl text-sm font-bold transition">🚚 होलसेल खरीद</button>
+      </nav>
+
+      <!-- Quick PDF Save -->
+      <button id="btn-header-pdf" class="tap-btn shrink-0 bg-white text-indigo-800 hover:bg-indigo-50 font-extrabold px-3.5 py-2.5 rounded-xl text-xs sm:text-sm shadow-md flex items-center gap-1.5">
+        <i data-lucide="file-down" class="w-4 h-4"></i>
+        <span>PDF सेव</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-3xl mx-auto px-3.5 sm:px-5 pt-4 space-y-4">
+
+    <!-- ==================== TAB 1: ROZ KA HISAB (DAILY + MONTHLY) ==================== -->
+    <section id="view-hisab" class="tab-view space-y-4 animate-pop">
+
+      <!-- 1) DAILY BOX (आज का हिसाब) -->
+      <div class="glass-card rounded-3xl p-4 sm:p-5 border border-amber-200/80 relative overflow-hidden">
+        <div class="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-amber-400 via-orange-400 to-emerald-400"></div>
+        <div class="flex items-center justify-between gap-2 mb-3.5 pt-1">
+          <div class="flex items-center gap-2">
+            <span class="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center text-lg">☀️</span>
+            <div>
+              <h2 class="text-base sm:text-lg font-extrabold text-slate-900 leading-tight">आज का हिसाब</h2>
+              <p id="today-date-label" class="text-xs font-semibold text-slate-500"></p>
+            </div>
+          </div>
+          <button id="btn-reset-today-quick" class="tap-btn px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-extrabold flex items-center gap-1">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> आज रीसेट
+          </button>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2.5">
+          <div class="bg-emerald-50/90 border border-emerald-200 rounded-2xl p-3 text-center">
+            <div class="text-[11px] sm:text-xs font-bold text-emerald-700">आज आया</div>
+            <div id="day-aaya" class="text-lg sm:text-2xl font-extrabold text-emerald-700 mt-1">₹0</div>
+          </div>
+          <div class="bg-rose-50/90 border border-rose-200 rounded-2xl p-3 text-center">
+            <div class="text-[11px] sm:text-xs font-bold text-rose-700">आज गया</div>
+            <div id="day-gaya" class="text-lg sm:text-2xl font-extrabold text-rose-600 mt-1">₹0</div>
+          </div>
+          <div class="bg-indigo-50/90 border border-indigo-200 rounded-2xl p-3 text-center">
+            <div class="text-[11px] sm:text-xs font-bold text-indigo-800">आज बचा</div>
+            <div id="day-bacha" class="text-lg sm:text-2xl font-extrabold text-indigo-900 mt-1">₹0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2) MONTHLY BOX (महीने का हिसाब) -->
+      <div class="hero-monthly rounded-3xl p-4 sm:p-5 text-white relative overflow-hidden">
+        <div class="flex items-center justify-between gap-2 mb-4">
+          <div class="flex items-center gap-2">
+            <span class="w-9 h-9 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center text-lg">📅</span>
+            <div>
+              <h2 class="text-base sm:text-lg font-extrabold leading-tight">महीने का हिसाब</h2>
+              <div class="flex items-center gap-2 mt-0.5">
+                <button id="btn-prev-month" class="w-6 h-6 rounded-lg bg-white/15 hover:bg-white/25 flex items-center justify-center text-xs font-bold" aria-label="पिछला महीना">◀</button>
+                <span id="month-label" class="text-xs sm:text-sm font-bold text-indigo-100"></span>
+                <button id="btn-next-month" class="w-6 h-6 rounded-lg bg-white/15 hover:bg-white/25 flex items-center justify-center text-xs font-bold" aria-label="अगला महीना">▶</button>
+              </div>
+            </div>
+          </div>
+          <button id="btn-reset-month-quick" class="tap-btn px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/25 text-xs font-extrabold flex items-center gap-1">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> महीना रीसेट
+          </button>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2.5">
+          <div class="bg-white/12 border border-white/15 rounded-2xl p-3 text-center backdrop-blur-sm">
+            <div class="text-[11px] sm:text-xs font-semibold text-emerald-200">कुल आया</div>
+            <div id="mon-aaya" class="text-lg sm:text-2xl font-extrabold text-white mt-1">₹0</div>
+          </div>
+          <div class="bg-white/12 border border-white/15 rounded-2xl p-3 text-center backdrop-blur-sm">
+            <div class="text-[11px] sm:text-xs font-semibold text-rose-200">कुल गया</div>
+            <div id="mon-gaya" class="text-lg sm:text-2xl font-extrabold text-white mt-1">₹0</div>
+          </div>
+          <div class="bg-white text-indigo-950 rounded-2xl p-3 text-center shadow-md">
+            <div class="text-[11px] sm:text-xs font-bold text-indigo-700">महीने की बचत</div>
+            <div id="mon-bacha" class="text-lg sm:text-2xl font-extrabold text-indigo-950 mt-1">₹0</div>
+          </div>
+        </div>
+
+        <!-- Simple Visual Balance Bar (No confusing numbers/percentages) -->
+        <div class="mt-3.5 space-y-1">
+          <div class="h-2.5 w-full bg-indigo-950/40 rounded-full overflow-hidden flex">
+            <div id="bar-aaya" class="bg-emerald-400 h-full transition-all duration-300" style="width: 50%"></div>
+            <div id="bar-gaya" class="bg-orange-400 h-full transition-all duration-300" style="width: 50%"></div>
+          </div>
+          <div class="flex justify-between text-[11px] text-indigo-100/85 font-medium">
+            <span>🟢 हरा = बिक्री (आया)</span>
+            <span>🟠 नारंगी = माल + खर्च (गया)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3) TWO BIG VIBRANT ACTION BUTTONS -->
+      <div class="grid grid-cols-2 gap-3">
+        <button id="btn-open-sale" class="tap-btn btn-sale-grad text-white rounded-3xl p-4 sm:p-5 flex flex-col items-center justify-center gap-1.5 text-center">
+          <span class="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center text-2xl">💵</span>
+          <span class="text-base sm:text-lg font-extrabold">+ बिक्री लिखें</span>
+          <span class="text-[11px] text-emerald-50">आज कितना पैसा आया</span>
+        </button>
+        <button id="btn-open-expense" class="tap-btn btn-exp-grad text-white rounded-3xl p-4 sm:p-5 flex flex-col items-center justify-center gap-1.5 text-center">
+          <span class="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center text-2xl">🧾</span>
+          <span class="text-base sm:text-lg font-extrabold">+ खर्च लिखें</span>
+          <span class="text-[11px] text-orange-50">चाय, भाड़ा, बिजली आदि</span>
+        </button>
+      </div>
+
+      <!-- 4) PDF + RESET CENTER ROW -->
+      <div class="grid grid-cols-2 gap-2.5">
+        <button id="btn-pdf-full" class="tap-btn bg-slate-900 hover:bg-slate-800 text-white rounded-2xl py-3.5 px-3 font-extrabold text-xs sm:text-sm shadow-md flex items-center justify-center gap-1.5">
+          <i data-lucide="file-text" class="w-4 h-4"></i> पूरा हिसाब PDF
+        </button>
+        <button id="btn-open-reset-center" class="tap-btn bg-white hover:bg-rose-50 text-rose-700 border-2 border-rose-200 rounded-2xl py-3.5 px-3 font-extrabold text-xs sm:text-sm shadow-sm flex items-center justify-center gap-1.5">
+          <i data-lucide="trash-2" class="w-4 h-4"></i> हिसाब रीसेट करें
+        </button>
+      </div>
+
+      <!-- 5) PASSBOOK WITH EDIT & FILTER -->
+      <div class="glass-card rounded-3xl p-4 sm:p-5 border border-slate-200/80 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-1.5">
+            <span>📖 हिसाब की कॉपी</span>
+            <span id="hisab-count-label" class="text-xs font-bold px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded-full">0</span>
+          </h2>
+          <div class="inline-flex bg-slate-100 p-1 rounded-xl text-xs font-bold">
+            <button data-pfilter="today" class="pfilter-btn px-2.5 py-1 rounded-lg transition">आज</button>
+            <button data-pfilter="month" class="pfilter-btn px-2.5 py-1 rounded-lg transition">इस महीने</button>
+            <button data-pfilter="all" class="pfilter-btn px-2.5 py-1 rounded-lg transition">सभी</button>
+          </div>
+        </div>
+        <p class="text-[11px] text-slate-500">गलती से कुछ गलत लिख गया हो तो किसी भी एंट्री पर <b>✏️ सुधारें</b> दबाकर सही करें।</p>
+        <div id="hisab-passbook-list" class="space-y-2.5"></div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 2: KYA LENA HAI (SEPARATE LISTS + MANUAL PRICE) ==================== -->
+    <section id="view-samaan" class="tab-view hidden space-y-4 animate-pop">
+      <!-- Strictly Separate Toggle -->
+      <div class="grid grid-cols-2 gap-2 glass-card p-1.5 rounded-2xl border border-slate-200">
+        <button id="filter-empty-btn" class="tap-btn py-3 rounded-xl text-sm sm:text-base font-extrabold transition">
+          ❌ लेना है (<span id="count-empty-pill">0</span>)
+        </button>
+        <button id="filter-have-btn" class="tap-btn py-3 rounded-xl text-sm sm:text-base font-extrabold transition">
+          ✅ नहीं लेना (<span id="count-have-pill">0</span>)
+        </button>
+      </div>
+
+      <!-- Live Total Card for "लेना है" -->
+      <div id="order-total-box" class="bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-3xl p-4 sm:p-5 shadow-lg flex items-center justify-between gap-3">
+        <div>
+          <div class="text-xs sm:text-sm font-bold text-emerald-100">लेना है लिस्ट का कुल जोड़</div>
+          <div id="order-priced-count" class="text-[11px] text-emerald-50/90 mt-0.5">0 सामान का दाम लिखा गया</div>
+        </div>
+        <div id="order-total-amount" class="text-2xl sm:text-3xl font-extrabold shrink-0">₹0</div>
+      </div>
+
+      <!-- Quick Add Item -->
+      <form id="quick-add-item-form" class="flex gap-2">
+        <input id="new-item-name" type="text" placeholder="नया सामान लिखें (जैसे: साबुन, तेल)..." class="flex-1 px-4 py-3.5 bg-white border-2 border-indigo-100 rounded-2xl text-base font-semibold focus:outline-none focus:border-indigo-500 shadow-sm" />
+        <button type="submit" class="tap-btn px-5 py-3.5 btn-wh-grad text-white rounded-2xl text-base font-extrabold shrink-0">
+          + जोड़ें
+        </button>
+      </form>
+
+      <!-- PDF & WhatsApp Copy -->
+      <div class="grid grid-cols-2 gap-2.5">
+        <button id="btn-pdf-list" class="tap-btn py-3 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-1.5 shadow">
+          <i data-lucide="file-down" class="w-4 h-4"></i> लिस्ट का PDF
+        </button>
+        <button id="btn-copy-list" class="tap-btn py-3 px-3 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-1.5 shadow">
+          <i data-lucide="copy" class="w-4 h-4"></i> व्हाट्सएप कॉपी
+        </button>
+      </div>
+
+      <!-- Item Cards -->
+      <div id="samaan-list" class="space-y-2.5"></div>
+    </section>
+
+    <!-- ==================== TAB 3: WHOLESALE KHARID ==================== -->
+    <section id="view-wholesale" class="tab-view hidden space-y-4 animate-pop">
+      <div class="grid grid-cols-3 gap-2.5">
+        <div class="glass-card border border-slate-200 rounded-2xl p-3.5 text-center">
+          <div class="text-xs font-bold text-slate-600">कुल माल लिया</div>
+          <div id="wh-sum-total" class="text-lg sm:text-xl font-extrabold text-slate-900 mt-1">₹0</div>
+        </div>
+        <div class="glass-card border border-emerald-200 rounded-2xl p-3.5 text-center">
+          <div class="text-xs font-bold text-emerald-700">पैसा दिया</div>
+          <div id="wh-sum-paid" class="text-lg sm:text-xl font-extrabold text-emerald-700 mt-1">₹0</div>
+        </div>
+        <div class="glass-card border border-rose-200 rounded-2xl p-3.5 text-center">
+          <div class="text-xs font-bold text-rose-700">देना बाकी</div>
+          <div id="wh-sum-due" class="text-lg sm:text-xl font-extrabold text-rose-600 mt-1">₹0</div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        <button id="btn-open-wholesale" class="tap-btn btn-wh-grad py-4 px-4 text-white rounded-2xl text-base font-extrabold flex items-center justify-center gap-2">
+          <span class="text-xl">🚚</span> + नया होलसेल बिल लिखें
+        </button>
+        <button id="btn-pdf-wholesale" class="tap-btn py-4 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-base font-extrabold shadow-md flex items-center justify-center gap-2">
+          <i data-lucide="file-down" class="w-5 h-5"></i> होलसेल हिसाब PDF
+        </button>
+      </div>
+
+      <div id="wholesale-bills-list" class="space-y-3"></div>
+    </section>
+
+  </main>
+
+  <!-- Modern Tactile Mobile Bottom Navigation -->
+  <nav class="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-6px_20px_rgba(15,23,42,0.08)] p-2" aria-label="मोबाइल मेनू">
+    <div class="grid grid-cols-3 gap-2">
+      <button data-tab="hisab" class="mob-tab tap-btn py-2.5 rounded-2xl flex flex-col items-center justify-center gap-0.5 text-slate-500">
+        <span class="text-xl leading-none">💰</span>
+        <span class="text-xs font-bold">रोज़ का हिसाब</span>
+      </button>
+      <button data-tab="samaan" class="mob-tab tap-btn py-2.5 rounded-2xl flex flex-col items-center justify-center gap-0.5 text-slate-500 relative">
+        <span class="text-xl leading-none">📋</span>
+        <span class="text-xs font-bold">क्या लेना है</span>
+        <span id="mob-empty-badge" class="hidden absolute top-1 right-4 px-1.5 py-0.5 bg-rose-600 text-white rounded-full text-[10px] font-extrabold shadow">0</span>
+      </button>
+      <button data-tab="wholesale" class="mob-tab tap-btn py-2.5 rounded-2xl flex flex-col items-center justify-center gap-0.5 text-slate-500">
+        <span class="text-xl leading-none">🚚</span>
+        <span class="text-xs font-bold">होलसेल खरीद</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Modal -->
+  <div id="modal-backdrop" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-[3px] flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto p-5 animate-pop">
+      <div class="flex items-center justify-between mb-4">
+        <h3 id="modal-title" class="text-lg font-extrabold text-slate-900"></h3>
+        <button id="btn-close-modal" class="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-700 font-bold" aria-label="बंद करें">✕</button>
+      </div>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Off-screen PDF Render Stage -->
+  <div id="pdf-render-stage" aria-hidden="true"></div>
+
+  <!-- Toast -->
+  <div id="toast-container" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-[92%] max-w-sm pointer-events-none"></div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const STORAGE_KEY = 'meri_dukaan_simple_v3';
+
+      const DEFAULT_STATE = {
+        shopName: 'मेरी दुकान',
+        items: [
+          { id: 's1', name: 'आटा', empty: false, price: '' },
+          { id: 's2', name: 'चावल', empty: false, price: '' },
+          { id: 's3', name: 'सरसों तेल', empty: true, price: '' },
+          { id: 's4', name: 'चीनी', empty: true, price: '' },
+          { id: 's5', name: 'दाल', empty: false, price: '' },
+          { id: 's6', name: 'चाय पत्ती', empty: false, price: '' },
+          { id: 's7', name: 'बिस्कुट', empty: true, price: '' },
+          { id: 's8', name: 'मैगी', empty: false, price: '' },
+          { id: 's9', name: 'नमक', empty: false, price: '' },
+          { id: 's10', name: 'साबुन', empty: false, price: '' },
+          { id: 's11', name: 'दूध', empty: false, price: '' },
+          { id: 's12', name: 'कोल्ड ड्रिंक', empty: false, price: '' }
+        ],
+        entries: [],       // { id, type: 'sale' | 'expense', dateStr, amount, note }
+        wholesale: []      // { id, dateStr, shop, itemsText, total, paid, due }
+      };
+
+      let state = loadState();
+      let activeTab = 'hisab';
+      let samaanFilter = 'empty'; // 'empty' | 'have'
+      let passbookFilter = 'month'; // 'today' | 'month' | 'all'
+
+      const nowDate = new Date();
+      let selectedYear = nowDate.getFullYear();
+      let selectedMonth = nowDate.getMonth(); // 0-11
+
+      function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+      function loadState() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const p = JSON.parse(raw);
+            if (p && Array.isArray(p.items)) return Object.assign(clone(DEFAULT_STATE), p);
+          }
+        } catch (e) {}
+        return clone(DEFAULT_STATE);
+      }
+
+      function saveState() {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+      }
+
+      function uid(p) { return p + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+      function todayStr() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      }
+
+      function monthPrefix(y, m) {
+        return `${y}-${String(m + 1).padStart(2, '0')}`;
+      }
+
+      function fmtMonthHindi(y, m) {
+        try {
+          return new Date(y, m, 1).toLocaleDateString('hi-IN', { month: 'long', year: 'numeric' });
+        } catch (e) {
+          return `${m + 1}/${y}`;
+        }
+      }
+
+      function fmtINR(n) {
+        const val = Math.round((Number(n) || 0) * 100) / 100;
+        return '₹' + val.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+      }
+
+      function fmtDate(ds) {
+        try {
+          const [y, m, d] = ds.split('-').map(Number);
+          return new Date(y, m - 1, d).toLocaleDateString('hi-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        } catch (e) { return ds || ''; }
+      }
+
+      function esc(str) {
+        return String(str ?? '')
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      }
+
+      function showToast(msg, type = 'ok') {
+        const box = document.getElementById('toast-container');
+        const el = document.createElement('div');
+        el.className = `${type === 'err' ? 'bg-rose-700' : 'bg-indigo-950'} text-white px-4 py-3 rounded-2xl shadow-xl text-sm font-bold text-center transition-all duration-200 opacity-0 translate-y-2`;
+        el.textContent = msg;
+        box.appendChild(el);
+        requestAnimationFrame(() => el.classList.remove('opacity-0', 'translate-y-2'));
+        setTimeout(() => {
+          el.classList.add('opacity-0', '-translate-y-2');
+          setTimeout(() => el.remove(), 220);
+        }, 2600);
+      }
+
+      function copyText(text, msg) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(() => showToast(msg)).catch(() => fallbackCopy(text, msg));
+        } else {
+          fallbackCopy(text, msg);
+        }
+      }
+
+      function fallbackCopy(text, msg) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try { document.execCommand('copy'); showToast(msg); } catch (e) { showToast('कॉपी नहीं हो पाया', 'err'); }
+        ta.remove();
+      }
+
+      // ==================== MODAL ====================
+      function openModal(title, html) {
+        document.getElementById('modal-title').textContent = title;
+        document.getElementById('modal-body').innerHTML = html;
+        document.getElementById('modal-backdrop').classList.remove('hidden');
+        if (window.lucide) lucide.createIcons();
+      }
+
+      function closeModal() {
+        document.getElementById('modal-backdrop').classList.add('hidden');
+      }
+
+      document.getElementById('btn-close-modal').addEventListener('click', closeModal);
+      document.getElementById('modal-backdrop').addEventListener('click', (e) => {
+        if (e.target.id === 'modal-backdrop') closeModal();
+      });
+
+      // ==================== TABS ====================
+      function switchTab(tab) {
+        activeTab = tab;
+        document.querySelectorAll('.tab-view').forEach(v => v.classList.add('hidden'));
+        const view = document.getElementById('view-' + tab);
+        if (view) view.classList.remove('hidden');
+
+        document.querySelectorAll('.desk-tab').forEach(b => {
+          const act = b.dataset.tab === tab;
+          b.classList.toggle('bg-white', act);
+          b.classList.toggle('text-indigo-800', act);
+          b.classList.toggle('shadow', act);
+          b.classList.toggle('text-indigo-100', !act);
+        });
+
+        document.querySelectorAll('.mob-tab').forEach(b => {
+          b.classList.toggle('nav-active-mob', b.dataset.tab === tab);
+          b.classList.toggle('text-slate-500', b.dataset.tab !== tab);
+        });
+
+        renderAll();
+      }
+
+      document.querySelectorAll('[data-tab]').forEach(b => {
+        b.addEventListener('click', () => switchTab(b.dataset.tab));
+      });
+
+      // Edit shop name modal
+      document.getElementById('btn-edit-shop-name').addEventListener('click', () => {
+        openModal('🏪 दुकान का नाम बदलें', `
+          <form id="shop-name-modal-form" class="space-y-4">
+            <input id="sn-input" type="text" required value="${esc(state.shopName)}" placeholder="अपनी दुकान का नाम लिखें" class="w-full px-4 py-3.5 border-2 border-indigo-200 rounded-2xl text-base font-bold focus:outline-none focus:border-indigo-600" />
+            <button type="submit" class="tap-btn w-full py-3.5 btn-wh-grad text-white rounded-2xl text-base font-extrabold">नाम सेव करें ✓</button>
+          </form>
+        `);
+        document.getElementById('shop-name-modal-form').addEventListener('submit', (e) => {
+          e.preventDefault();
+          state.shopName = document.getElementById('sn-input').value.trim() || 'मेरी दुकान';
+          saveState();
+          closeModal();
+          renderAll();
+          showToast('दुकान का नाम सेव हो गया!');
+        });
+      });
+
+      // ==================== CALCULATIONS (DAILY, MONTHLY, ALL) ====================
+      function calcTotalsForFilter(predicate) {
+        const sales = state.entries.filter(e => e.type === 'sale' && predicate(e.dateStr)).reduce((s, e) => s + e.amount, 0);
+        const exp = state.entries.filter(e => e.type === 'expense' && predicate(e.dateStr)).reduce((s, e) => s + e.amount, 0);
+        const whPaid = state.wholesale.filter(w => predicate(w.dateStr)).reduce((s, w) => s + w.paid, 0);
+        const whTotal = state.wholesale.filter(w => predicate(w.dateStr)).reduce((s, w) => s + w.total, 0);
+        const whDue = state.wholesale.filter(w => predicate(w.dateStr)).reduce((s, w) => s + w.due, 0);
+        const gaya = exp + whPaid;
+        const bacha = sales - gaya;
+        return { sales, exp, whPaid, whTotal, whDue, gaya, bacha };
+      }
+
+      // ==================== TAB 1: DAILY + MONTHLY + PASSBOOK ====================
+      function renderHisab() {
+        const tStr = todayStr();
+        const mPref = monthPrefix(selectedYear, selectedMonth);
+
+        document.getElementById('today-date-label').textContent = fmtDate(tStr);
+        document.getElementById('month-label').textContent = fmtMonthHindi(selectedYear, selectedMonth);
+
+        // Daily
+        const dayT = calcTotalsForFilter(ds => ds === tStr);
+        document.getElementById('day-aaya').textContent = fmtINR(dayT.sales);
+        document.getElementById('day-gaya').textContent = fmtINR(dayT.gaya);
+        const dayBEl = document.getElementById('day-bacha');
+        dayBEl.textContent = fmtINR(dayT.bacha);
+        dayBEl.className = `text-lg sm:text-2xl font-extrabold mt-1 ${dayT.bacha >= 0 ? 'text-indigo-900' : 'text-rose-600'}`;
+
+        // Monthly
+        const monT = calcTotalsForFilter(ds => (ds || '').startsWith(mPref));
+        document.getElementById('mon-aaya').textContent = fmtINR(monT.sales);
+        document.getElementById('mon-gaya').textContent = fmtINR(monT.gaya);
+        const monBEl = document.getElementById('mon-bacha');
+        monBEl.textContent = fmtINR(monT.bacha);
+        monBEl.className = `text-lg sm:text-2xl font-extrabold mt-1 ${monT.bacha >= 0 ? 'text-indigo-950' : 'text-rose-600'}`;
+
+        // Visual balance bar
+        const sumFlow = monT.sales + monT.gaya;
+        const aayaPct = sumFlow > 0 ? Math.round((monT.sales / sumFlow) * 100) : 50;
+        document.getElementById('bar-aaya').style.width = aayaPct + '%';
+        document.getElementById('bar-gaya').style.width = (100 - aayaPct) + '%';
+
+        // Passbook filter buttons
+        document.querySelectorAll('.pfilter-btn').forEach(btn => {
+          const act = btn.dataset.pfilter === passbookFilter;
+          btn.classList.toggle('bg-white', act);
+          btn.classList.toggle('text-indigo-800', act);
+          btn.classList.toggle('shadow-sm', act);
+          btn.classList.toggle('text-slate-500', !act);
+        });
+
+        const matchPred = (ds) => {
+          if (passbookFilter === 'today') return ds === tStr;
+          if (passbookFilter === 'month') return (ds || '').startsWith(mPref);
+          return true;
+        };
+
+        const combined = [
+          ...state.entries.filter(e => matchPred(e.dateStr)).map(e => ({
+            id: e.id,
+            kind: e.type,
+            dateStr: e.dateStr,
+            title: e.type === 'sale' ? '💵 बिक्री (आया)' : '🧾 दुकान खर्च',
+            sub: e.note || '',
+            amount: e.amount,
+            isIn: e.type === 'sale'
+          })),
+          ...state.wholesale.filter(w => matchPred(w.dateStr)).map(w => ({
+            id: w.id,
+            kind: 'wholesale',
+            dateStr: w.dateStr,
+            title: `🚚 होलसेल: ${w.shop}`,
+            sub: `${w.itemsText || 'माल खरीद'}${w.due > 0 ? ` • बाकी: ${fmtINR(w.due)}` : ''}`,
+            amount: w.paid,
+            isIn: false
+          }))
+        ].sort((a, b) => (b.dateStr || '').localeCompare(a.dateStr || ''));
+
+        document.getElementById('hisab-count-label').textContent = combined.length;
+        const list = document.getElementById('hisab-passbook-list');
+
+        if (combined.length === 0) {
+          list.innerHTML = `<div class="py-8 text-center text-slate-400 text-sm font-semibold">इस समय में अभी कोई हिसाब दर्ज नहीं है। ऊपर हरे या नारंगी बटन पर टैप करें।</div>`;
+          return;
+        }
+
+        list.innerHTML = combined.map(row => `
+          <div class="border ${row.isIn ? 'border-emerald-200 bg-emerald-50/45' : 'border-orange-200 bg-orange-50/45'} rounded-2xl p-3.5 flex items-center justify-between gap-2">
+            <div class="min-w-0 flex-1">
+              <div class="font-extrabold text-slate-900 text-sm sm:text-base truncate">${esc(row.title)}</div>
+              <div class="text-xs text-slate-500 mt-0.5">${fmtDate(row.dateStr)}${row.sub ? ` • ${esc(row.sub)}` : ''}</div>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <span class="text-base font-extrabold mr-1 ${row.isIn ? 'text-emerald-700' : 'text-rose-600'}">
+                ${row.isIn ? '+' : '−'} ${fmtINR(row.amount)}
+              </span>
+              <button data-edit-row="${esc(row.id)}" data-kind="${esc(row.kind)}" class="tap-btn px-2.5 py-1.5 rounded-xl bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-bold text-xs flex items-center gap-1" title="सुधारें">
+                ✏️
+              </button>
+              <button data-del-row="${esc(row.id)}" data-kind="${esc(row.kind)}" class="tap-btn px-2.5 py-1.5 rounded-xl bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 font-bold text-xs" title="हटाएं">
+                ✕
+              </button>
+            </div>
+          </div>
+        `).join('');
+
+        list.querySelectorAll('[data-edit-row]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const id = btn.dataset.editRow;
+            const kind = btn.dataset.kind;
+            if (kind === 'wholesale') {
+              const w = state.wholesale.find(x => x.id === id);
+              if (w) openWholesaleModal(w);
+            } else {
+              const entry = state.entries.find(x => x.id === id);
+              if (entry) openEntryModal(entry.type, entry);
+            }
+          });
+        });
+
+        list.querySelectorAll('[data-del-row]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const id = btn.dataset.delRow;
+            const kind = btn.dataset.kind;
+            if (kind === 'wholesale') {
+              state.wholesale = state.wholesale.filter(x => x.id !== id);
+            } else {
+              state.entries = state.entries.filter(x => x.id !== id);
+            }
+            saveState();
+            renderAll();
+            showToast('एंट्री हटा दी गई');
+          });
+        });
+      }
+
+      document.getElementById('btn-prev-month').addEventListener('click', () => {
+        selectedMonth--;
+        if (selectedMonth < 0) { selectedMonth = 11; selectedYear--; }
+        renderHisab();
+      });
+      document.getElementById('btn-next-month').addEventListener('click', () => {
+        selectedMonth++;
+        if (selectedMonth > 11) { selectedMonth = 0; selectedYear++; }
+        renderHisab();
+      });
+
+      document.querySelectorAll('.pfilter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          passbookFilter = btn.dataset.pfilter;
+          renderHisab();
+        });
+      });
+
+      // Unified Add / Edit Modal for Sale & Expense (with Quick Amount Chips!)
+      function openEntryModal(type, existing = null) {
+        const isSale = type === 'sale';
+        const title = existing
+          ? (isSale ? '✏️ बिक्री सुधारें' : '✏️ खर्च सुधारें')
+          : (isSale ? '💵 आज की बिक्री लिखें' : '🧾 आज का खर्च लिखें');
+
+        openModal(title, `
+          <form id="form-entry" class="space-y-4">
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-1.5">${isSale ? 'कितना पैसा आया? (₹)*' : 'कितना खर्च हुआ? (₹)*'}</label>
+              <input id="in-ent-amt" type="number" min="1" step="1" required value="${existing ? existing.amount : ''}" placeholder="${isSale ? 'जैसे: 5000' : 'जैसे: 150'}" class="w-full px-4 py-3.5 border-2 ${isSale ? 'border-emerald-300 focus:border-emerald-600' : 'border-orange-300 focus:border-orange-500'} rounded-2xl text-2xl font-extrabold focus:outline-none" />
+              <div class="flex flex-wrap gap-1.5 mt-2">
+                ${(isSale ? [500, 1000, 2000, 5000] : [50, 100, 200, 500]).map(v => `<button type="button" data-quick-amt="${v}" class="quick-amt-chip px-3 py-1 rounded-xl bg-slate-100 hover:bg-indigo-100 text-slate-700 text-xs font-extrabold">+₹${v}</button>`).join('')}
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-1.5">तारीख</label>
+              <input id="in-ent-date" type="date" value="${existing ? existing.dateStr : todayStr()}" class="w-full px-4 py-3 border-2 border-slate-200 rounded-2xl text-base font-bold" />
+            </div>
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-1.5">${isSale ? 'नोट (ज़रूरी नहीं)' : 'किस चीज़ पर खर्च हुआ?*'}</label>
+              <input id="in-ent-note" type="text" ${isSale ? '' : 'required'} value="${esc(existing ? existing.note : '')}" placeholder="${isSale ? 'जैसे: नकद + UPI मिलाकर' : 'जैसे: चाय, भाड़ा, बिजली बिल'}" class="w-full px-4 py-3 border-2 border-slate-200 rounded-2xl text-base font-semibold" />
+            </div>
+            <button type="submit" class="tap-btn w-full py-4 ${isSale ? 'btn-sale-grad' : 'btn-exp-grad'} text-white rounded-2xl text-base font-extrabold">
+              ${existing ? 'बदलाव सेव करें ✓' : (isSale ? 'बिक्री सेव करें ✓' : 'खर्च सेव करें ✓')}
+            </button>
+          </form>
+        `);
+
+        document.querySelectorAll('.quick-amt-chip').forEach(chip => {
+          chip.addEventListener('click', () => {
+            const inp = document.getElementById('in-ent-amt');
+            inp.value = (Number(inp.value) || 0) + Number(chip.dataset.quickAmt);
+          });
+        });
+
+        document.getElementById('form-entry').addEventListener('submit', (e) => {
+          e.preventDefault();
+          const amount = Number(document.getElementById('in-ent-amt').value) || 0;
+          if (amount <= 0) return;
+          const dateStr = document.getElementById('in-ent-date').value || todayStr();
+          const note = document.getElementById('in-ent-note').value.trim();
+
+          if (existing) {
+            existing.amount = amount;
+            existing.dateStr = dateStr;
+            existing.note = note;
+            showToast('हिसाब सही कर दिया गया ✓');
+          } else {
+            state.entries.unshift({ id: uid('e'), type, dateStr, amount, note });
+            showToast(isSale ? `${fmtINR(amount)} बिक्री जुड़ गई!` : `${fmtINR(amount)} खर्च लिख दिया गया!`);
+          }
+          saveState();
+          closeModal();
+          renderAll();
+        });
+      }
+
+      document.getElementById('btn-open-sale').addEventListener('click', () => openEntryModal('sale'));
+      document.getElementById('btn-open-expense').addEventListener('click', () => openEntryModal('expense'));
+
+      // ==================== RESET CENTER (DAILY / MONTHLY / ALL) ====================
+      function openResetModal(defaultScope = null) {
+        const tStr = todayStr();
+        const mPref = monthPrefix(selectedYear, selectedMonth);
+        const mName = fmtMonthHindi(selectedYear, selectedMonth);
+
+        if (defaultScope) {
+          const scopeLabel = defaultScope === 'today'
+            ? `सिर्फ आज (${fmtDate(tStr)}) का सारा हिसाब`
+            : defaultScope === 'month'
+              ? `${mName} महीने का सारा हिसाब`
+              : 'पूरा हिसाब (सभी बिक्री, खर्च और होलसेल बिल)';
+          openModal('🔄 रीसेट की पुष्टि करें', `
+            <div class="space-y-4">
+              <p class="text-sm sm:text-base text-slate-700 font-semibold leading-relaxed">क्या आप वाकई <b>${esc(scopeLabel)}</b> हटाकर शून्य (₹0) करना चाहते हैं?</p>
+              <div class="grid grid-cols-2 gap-2.5">
+                <button id="btn-cancel-rst" class="tap-btn py-3 bg-slate-100 text-slate-700 rounded-2xl text-sm font-extrabold">नहीं, रहने दें</button>
+                <button id="btn-do-rst" class="tap-btn py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl text-sm font-extrabold">हाँ, रीसेट करें</button>
+              </div>
+            </div>
+          `);
+          document.getElementById('btn-cancel-rst').addEventListener('click', closeModal);
+          document.getElementById('btn-do-rst').addEventListener('click', () => {
+            if (defaultScope === 'today') {
+              state.entries = state.entries.filter(e => e.dateStr !== tStr);
+              state.wholesale = state.wholesale.filter(w => w.dateStr !== tStr);
+              showToast('आज का हिसाब रीसेट हो गया ✓');
+            } else if (defaultScope === 'month') {
+              state.entries = state.entries.filter(e => !(e.dateStr || '').startsWith(mPref));
+              state.wholesale = state.wholesale.filter(w => !(w.dateStr || '').startsWith(mPref));
+              showToast(`${mName} का हिसाब रीसेट हो गया ✓`);
+            } else {
+              state.entries = [];
+              state.wholesale = [];
+              showToast('पूरा हिसाब रीसेट हो गया ✓');
+            }
+            saveState();
+            closeModal();
+            renderAll();
+          });
+          return;
+        }
+
+        openModal('🔄 हिसाब रीसेट सेंटर', `
+          <div class="space-y-3">
+            <p class="text-xs sm:text-sm text-slate-500">चुनें कि आप कौन सा हिसाब साफ (रीसेट) करना चाहते हैं:</p>
+            <button id="rst-opt-today" class="tap-btn w-full p-3.5 bg-amber-50 hover:bg-amber-100 border-2 border-amber-200 rounded-2xl text-left flex items-center justify-between">
+              <div>
+                <div class="font-extrabold text-amber-950 text-sm sm:text-base">☀️ सिर्फ आज का हिसाब रीसेट करें</div>
+                <div class="text-xs text-amber-800">${fmtDate(tStr)} की बिक्री और खर्च हटेंगे</div>
+              </div>
+              <span class="text-amber-700 font-bold">→</span>
+            </button>
+            <button id="rst-opt-month" class="tap-btn w-full p-3.5 bg-indigo-50 hover:bg-indigo-100 border-2 border-indigo-200 rounded-2xl text-left flex items-center justify-between">
+              <div>
+                <div class="font-extrabold text-indigo-950 text-sm sm:text-base">📅 ${esc(mName)} का हिसाब रीसेट करें</div>
+                <div class="text-xs text-indigo-800">इस पूरे महीने का हिसाब शून्य होगा</div>
+              </div>
+              <span class="text-indigo-700 font-bold">→</span>
+            </button>
+            <button id="rst-opt-all" class="tap-btn w-full p-3.5 bg-rose-50 hover:bg-rose-100 border-2 border-rose-200 rounded-2xl text-left flex items-center justify-between">
+              <div>
+                <div class="font-extrabold text-rose-800 text-sm sm:text-base">⚠️ पूरा हिसाब साफ करें (All Reset)</div>
+                <div class="text-xs text-rose-700">सभी दिन, महीने और होलसेल बिल खाली होंगे</div>
+              </div>
+              <span class="text-rose-700 font-bold">→</span>
+            </button>
+          </div>
+        `);
+        document.getElementById('rst-opt-today').addEventListener('click', () => openResetModal('today'));
+        document.getElementById('rst-opt-month').addEventListener('click', () => openResetModal('month'));
+        document.getElementById('rst-opt-all').addEventListener('click', () => openResetModal('all'));
+      }
+
+      document.getElementById('btn-reset-today-quick').addEventListener('click', () => openResetModal('today'));
+      document.getElementById('btn-reset-month-quick').addEventListener('click', () => openResetModal('month'));
+      document.getElementById('btn-open-reset-center').addEventListener('click', () => openResetModal(null));
+
+      // ==================== TAB 2: KYA LENA HAI ====================
+      function updateOrderTotalDisplay() {
+        const empties = state.items.filter(i => i.empty);
+        let total = 0;
+        let pricedCount = 0;
+        empties.forEach(it => {
+          const val = Number(it.price);
+          if (val > 0) {
+            total += val;
+            pricedCount++;
+          }
+        });
+        document.getElementById('order-total-amount').textContent = fmtINR(total);
+        document.getElementById('order-priced-count').textContent = `${pricedCount} / ${empties.length} सामान का दाम लिखा गया`;
+      }
+
+      function renderSamaan() {
+        const empties = state.items.filter(i => i.empty);
+        const haves = state.items.filter(i => !i.empty);
+        document.getElementById('count-empty-pill').textContent = empties.length;
+        document.getElementById('count-have-pill').textContent = haves.length;
+
+        const fEmpty = document.getElementById('filter-empty-btn');
+        const fHave = document.getElementById('filter-have-btn');
+        fEmpty.className = `tap-btn py-3 rounded-xl text-sm sm:text-base font-extrabold transition ${samaanFilter === 'empty' ? 'bg-rose-600 text-white shadow' : 'text-slate-600'}`;
+        fHave.className = `tap-btn py-3 rounded-xl text-sm sm:text-base font-extrabold transition ${samaanFilter === 'have' ? 'bg-emerald-600 text-white shadow' : 'text-slate-600'}`;
+
+        document.getElementById('order-total-box').classList.toggle('hidden', samaanFilter !== 'empty');
+        updateOrderTotalDisplay();
+
+        const shown = samaanFilter === 'empty' ? empties : haves;
+        const list = document.getElementById('samaan-list');
+
+        if (shown.length === 0) {
+          const emptyMsg = samaanFilter === 'empty'
+            ? '🎉 अभी कोई सामान लेना बाकी नहीं है!'
+            : 'अभी इस लिस्ट में कोई सामान नहीं है।';
+          list.innerHTML = `<div class="glass-card border border-slate-200 rounded-3xl p-8 text-center text-slate-500 font-bold text-base">${emptyMsg}</div>`;
+          return;
+        }
+
+        list.innerHTML = shown.map(it => {
+          if (it.empty) {
+            return `
+              <div class="glass-card border-2 border-rose-200 rounded-2xl p-3.5 space-y-2.5">
+                <div class="flex items-center justify-between gap-2">
+                  <div class="flex items-center gap-2 min-w-0 flex-1">
+                    <button data-del-item="${esc(it.id)}" class="w-8 h-8 rounded-xl bg-slate-100 text-slate-400 hover:text-rose-600 font-bold text-xs shrink-0" aria-label="हटाएं">✕</button>
+                    <span class="text-base sm:text-lg font-extrabold text-slate-900 truncate">${esc(it.name)}</span>
+                  </div>
+                  <button data-set-empty="${esc(it.id)}" data-val="false" class="tap-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white shadow shrink-0">
+                    ✅ नहीं लेना (है)
+                  </button>
+                </div>
+                <div class="flex items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+                  <label for="price-${esc(it.id)}" class="text-xs sm:text-sm font-bold text-slate-600 shrink-0">दाम लिखें (₹):</label>
+                  <input id="price-${esc(it.id)}" data-price-id="${esc(it.id)}" type="number" min="0" step="1" value="${esc(it.price ?? '')}" placeholder="होलसेलर का दाम ₹" class="w-40 sm:w-48 px-3 py-1.5 text-right bg-white border-2 border-indigo-100 rounded-xl text-base font-extrabold text-slate-900 focus:outline-none focus:border-indigo-500" />
+                </div>
+              </div>
+            `;
+          }
+          return `
+            <div class="glass-card border border-emerald-200 rounded-2xl p-3.5 flex items-center justify-between gap-2.5">
+              <div class="flex items-center gap-2 min-w-0 flex-1">
+                <button data-del-item="${esc(it.id)}" class="w-8 h-8 rounded-xl bg-slate-100 text-slate-400 hover:text-rose-600 font-bold text-xs shrink-0" aria-label="हटाएं">✕</button>
+                <span class="text-base sm:text-lg font-extrabold text-slate-900 truncate">${esc(it.name)}</span>
+              </div>
+              <button data-set-empty="${esc(it.id)}" data-val="true" class="tap-btn px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold bg-rose-600 hover:bg-rose-700 text-white shadow shrink-0">
+                ❌ लेना है में भेजें
+              </button>
+            </div>
+          `;
+        }).join('');
+
+        list.querySelectorAll('[data-price-id]').forEach(inp => {
+          inp.addEventListener('input', () => {
+            const it = state.items.find(x => x.id === inp.dataset.priceId);
+            if (!it) return;
+            it.price = inp.value;
+            saveState();
+            updateOrderTotalDisplay();
+          });
+        });
+
+        list.querySelectorAll('[data-set-empty]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const it = state.items.find(x => x.id === btn.dataset.setEmpty);
+            if (!it) return;
+            it.empty = btn.dataset.val === 'true';
+            if (!it.empty) it.price = '';
+            saveState();
+            renderAll();
+            showToast(it.empty ? `${it.name} — "लेना है" में चला गया` : `${it.name} — "नहीं लेना" में चला गया ✓`);
+          });
+        });
+
+        list.querySelectorAll('[data-del-item]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            state.items = state.items.filter(x => x.id !== btn.dataset.delItem);
+            saveState();
+            renderAll();
+            showToast('सामान हटा दिया गया');
+          });
+        });
+      }
+
+      document.getElementById('filter-empty-btn').addEventListener('click', () => { samaanFilter = 'empty'; renderSamaan(); });
+      document.getElementById('filter-have-btn').addEventListener('click', () => { samaanFilter = 'have'; renderSamaan(); });
+
+      document.getElementById('quick-add-item-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const inp = document.getElementById('new-item-name');
+        const name = inp.value.trim();
+        if (!name) return;
+        const addAsEmpty = samaanFilter === 'empty';
+        state.items.unshift({ id: uid('s'), name, empty: addAsEmpty, price: '' });
+        inp.value = '';
+        saveState();
+        renderAll();
+        showToast(addAsEmpty ? `${name} "लेना है" लिस्ट में जुड़ गया!` : `${name} "नहीं लेना" लिस्ट में जुड़ गया!`);
+      });
+
+      document.getElementById('btn-copy-list').addEventListener('click', () => {
+        const empties = state.items.filter(i => i.empty);
+        if (empties.length === 0) {
+          showToast('अभी कोई सामान लेना बाकी नहीं है');
+          return;
+        }
+        let total = 0;
+        const lines = empties.map((it, idx) => {
+          const p = Number(it.price);
+          if (p > 0) {
+            total += p;
+            return `${idx + 1}. ${it.name} — ${fmtINR(p)}`;
+          }
+          return `${idx + 1}. ${it.name}`;
+        });
+        const txt = [
+          `📋 *${state.shopName} — लेना है लिस्ट*`,
+          `तारीख: ${fmtDate(todayStr())}`,
+          `----------------`,
+          ...lines,
+          total > 0 ? `----------------\n*कुल जोड़: ${fmtINR(total)}*` : ''
+        ].filter(Boolean).join('\n');
+        copyText(txt, 'लिस्ट कॉपी हो गई! अब व्हाट्सएप पर भेजें।');
+      });
+
+      // ==================== TAB 3: WHOLESALE KHARID ====================
+      function renderWholesale() {
+        const allT = calcTotalsForFilter(() => true);
+        document.getElementById('wh-sum-total').textContent = fmtINR(allT.whTotal);
+        document.getElementById('wh-sum-paid').textContent = fmtINR(allT.whPaid);
+        document.getElementById('wh-sum-due').textContent = fmtINR(allT.whDue);
+
+        const list = document.getElementById('wholesale-bills-list');
+        if (state.wholesale.length === 0) {
+          list.innerHTML = `<div class="glass-card border border-slate-200 rounded-3xl p-8 text-center text-slate-400 font-bold text-sm sm:text-base">अभी कोई होलसेल बिल नहीं लिखा है। ऊपर नीले बटन पर टैप करके लिखें।</div>`;
+          return;
+        }
+
+        list.innerHTML = state.wholesale.map(w => `
+          <div class="glass-card border-2 ${w.due > 0 ? 'border-rose-200' : 'border-slate-200'} rounded-3xl p-4 space-y-2.5">
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0">
+                <div class="text-base font-extrabold text-slate-900">${esc(w.shop)}</div>
+                <div class="text-xs text-slate-500">${fmtDate(w.dateStr)}${w.itemsText ? ` • ${esc(w.itemsText)}` : ''}</div>
+              </div>
+              <div class="flex gap-1.5 shrink-0">
+                <button data-edit-wh="${esc(w.id)}" class="tap-btn px-2.5 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 font-bold text-xs">✏️ सुधारें</button>
+                <button data-del-wh="${esc(w.id)}" class="tap-btn w-8 h-8 rounded-xl bg-slate-100 text-slate-400 hover:text-rose-600 font-bold text-xs" aria-label="हटाएं">✕</button>
+              </div>
+            </div>
+            <div class="grid grid-cols-3 gap-2 bg-slate-50 rounded-2xl p-2.5 text-center">
+              <div>
+                <div class="text-[11px] text-slate-500 font-bold">कुल बिल</div>
+                <div class="text-sm sm:text-base font-extrabold text-slate-900">${fmtINR(w.total)}</div>
+              </div>
+              <div>
+                <div class="text-[11px] text-emerald-700 font-bold">दिया</div>
+                <div class="text-sm sm:text-base font-extrabold text-emerald-700">${fmtINR(w.paid)}</div>
+              </div>
+              <div>
+                <div class="text-[11px] text-rose-700 font-bold">बाकी</div>
+                <div class="text-sm sm:text-base font-extrabold ${w.due > 0 ? 'text-rose-600' : 'text-emerald-700'}">${fmtINR(w.due)}</div>
+              </div>
+            </div>
+            ${w.due > 0 ? `<button data-clear-due="${esc(w.id)}" class="tap-btn w-full py-2.5 btn-sale-grad text-white rounded-xl text-sm font-extrabold">✅ बाकी ${fmtINR(w.due)} चुका दिया</button>` : ''}
+          </div>
+        `).join('');
+
+        list.querySelectorAll('[data-edit-wh]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const w = state.wholesale.find(x => x.id === btn.dataset.editWh);
+            if (w) openWholesaleModal(w);
+          });
+        });
+
+        list.querySelectorAll('[data-clear-due]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const w = state.wholesale.find(x => x.id === btn.dataset.clearDue);
+            if (!w) return;
+            w.paid = w.total;
+            w.due = 0;
+            saveState();
+            renderAll();
+            showToast(`${w.shop} का पूरा हिसाब चुकता हो गया!`);
+          });
+        });
+
+        list.querySelectorAll('[data-del-wh]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            state.wholesale = state.wholesale.filter(x => x.id !== btn.dataset.delWh);
+            saveState();
+            renderAll();
+            showToast('होलसेल बिल हटा दिया गया');
+          });
+        });
+      }
+
+      function openWholesaleModal(existing = null) {
+        openModal(existing ? '✏️ होलसेल बिल सुधारें' : '🚚 नया होलसेल बिल लिखें', `
+          <form id="form-wh" class="space-y-4">
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-1.5">होलसेलर / दुकान का नाम*</label>
+              <input id="wh-shop" type="text" required value="${esc(existing ? existing.shop : '')}" placeholder="जैसे: गुप्ता होलसेल मंडी" class="w-full px-4 py-3 border-2 border-slate-200 rounded-2xl text-base font-bold focus:outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-1.5">कुल कितने का माल लिया? (₹)*</label>
+              <input id="wh-total" type="number" min="1" step="1" required value="${existing ? existing.total : ''}" placeholder="जैसे: 8000" class="w-full px-4 py-3.5 border-2 border-indigo-300 rounded-2xl text-2xl font-extrabold focus:outline-none focus:border-indigo-600" />
+            </div>
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-1.5">अभी कितना पैसा दिया? (₹)</label>
+              <input id="wh-paid" type="number" min="0" step="1" value="${existing ? existing.paid : ''}" placeholder="पूरा दे दिया तो खाली छोड़ें" class="w-full px-4 py-3 border-2 border-slate-200 rounded-2xl text-base font-bold" />
+            </div>
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-1.5">क्या-क्या सामान लिया? (ज़रूरी नहीं)</label>
+              <input id="wh-items" type="text" value="${esc(existing ? existing.itemsText : '')}" placeholder="जैसे: तेल, चीनी, बिस्कुट" class="w-full px-4 py-3 border-2 border-slate-200 rounded-2xl text-base" />
+            </div>
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-1.5">तारीख</label>
+              <input id="wh-date" type="date" value="${existing ? existing.dateStr : todayStr()}" class="w-full px-4 py-3 border-2 border-slate-200 rounded-2xl text-base font-bold" />
+            </div>
+            <button type="submit" class="tap-btn w-full py-4 btn-wh-grad text-white rounded-2xl text-base font-extrabold">
+              ${existing ? 'बदलाव सेव करें ✓' : 'होलसेल बिल सेव करें ✓'}
+            </button>
+          </form>
+        `);
+        document.getElementById('form-wh').addEventListener('submit', (e) => {
+          e.preventDefault();
+          const shop = document.getElementById('wh-shop').value.trim();
+          const total = Number(document.getElementById('wh-total').value) || 0;
+          const paidRaw = document.getElementById('wh-paid').value.trim();
+          const paid = paidRaw === '' ? total : Math.min(total, Number(paidRaw) || 0);
+          const due = Math.max(0, total - paid);
+          const dateStr = document.getElementById('wh-date').value || todayStr();
+          const itemsText = document.getElementById('wh-items').value.trim();
+          if (!shop || total <= 0) return;
+
+          if (existing) {
+            Object.assign(existing, { shop, total, paid, due, dateStr, itemsText });
+            showToast('होलसेल बिल सही हो गया ✓');
+          } else {
+            state.wholesale.unshift({ id: uid('w'), dateStr, shop, itemsText, total, paid, due });
+            showToast('होलसेल बिल सेव हो गया!');
+          }
+          saveState();
+          closeModal();
+          renderAll();
+        });
+      }
+
+      document.getElementById('btn-open-wholesale').addEventListener('click', () => openWholesaleModal(null));
+
+      // ==================== CRISP HINDI PDF GENERATOR ====================
+      async function generateHindiPDF(htmlContent, filename) {
+        if (typeof html2canvas === 'undefined' || !window.jspdf || !window.jspdf.jsPDF) {
+          showToast('PDF टूल लोड नहीं हुआ, कृपया इंटरनेट जांचें', 'err');
+          return;
+        }
+        showToast('PDF बन रही है, कृपया 2 सेकंड रुकें...');
+        const stage = document.getElementById('pdf-render-stage');
+        stage.innerHTML = htmlContent;
+
+        try {
+          await new Promise(r => setTimeout(r, 150));
+          const canvas = await html2canvas(stage, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+          const imgData = canvas.toDataURL('image/png');
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF('p', 'mm', 'a4');
+          const pageWidth = pdf.internal.pageSize.getWidth();
+          const pageHeight = pdf.internal.pageSize.getHeight();
+          const imgWidth = pageWidth - 16;
+          const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+          let heightLeft = imgHeight;
+          let position = 8;
+
+          pdf.addImage(imgData, 'PNG', 8, position, imgWidth, imgHeight);
+          heightLeft -= (pageHeight - 16);
+
+          while (heightLeft > 0) {
+            position = heightLeft - imgHeight + 8;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 8, position, imgWidth, imgHeight);
+            heightLeft -= (pageHeight - 16);
+          }
+
+          pdf.save(filename);
+          showToast('PDF डाउनलोड हो गई! ✓');
+        } catch (err) {
+          showToast('PDF बनाने में दिक्कत आई', 'err');
+        } finally {
+          stage.innerHTML = '';
+        }
+      }
+
+      function downloadFullHisabPDF() {
+        const tStr = todayStr();
+        const mPref = monthPrefix(selectedYear, selectedMonth);
+        const mName = fmtMonthHindi(selectedYear, selectedMonth);
+        const dayT = calcTotalsForFilter(ds => ds === tStr);
+        const monT = calcTotalsForFilter(ds => (ds || '').startsWith(mPref));
+
+        const rows = [
+          ...state.entries.filter(e => (e.dateStr || '').startsWith(mPref)).map(e => ({
+            date: fmtDate(e.dateStr),
+            desc: e.type === 'sale' ? `बिक्री ${e.note ? '(' + e.note + ')' : ''}` : `दुकान खर्च (${e.note || ''})`,
+            inAmt: e.type === 'sale' ? fmtINR(e.amount) : '—',
+            outAmt: e.type === 'expense' ? fmtINR(e.amount) : '—'
+          })),
+          ...state.wholesale.filter(w => (w.dateStr || '').startsWith(mPref)).map(w => ({
+            date: fmtDate(w.dateStr),
+            desc: `होलसेल: ${w.shop}${w.itemsText ? ' (' + w.itemsText + ')' : ''}${w.due > 0 ? ' [बाकी: ' + fmtINR(w.due) + ']' : ''}`,
+            inAmt: '—',
+            outAmt: fmtINR(w.paid)
+          }))
+        ];
+
+        const html = `
+          <div style="border-bottom:3px solid #3730a3;padding-bottom:14px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-end;">
+            <div>
+              <div style="font-size:26px;font-weight:800;color:#3730a3;">${esc(state.shopName)}</div>
+              <div style="font-size:14px;color:#475569;margin-top:4px;">दिन और महीने का हिसाब (${esc(mName)})</div>
+            </div>
+            <div style="font-size:13px;color:#475569;text-align:right;">तारीख: ${fmtDate(tStr)}</div>
+          </div>
+
+          <div style="font-size:13px;font-weight:800;color:#b45309;margin-bottom:6px;">आज का हिसाब (${fmtDate(tStr)})</div>
+          <div style="display:flex;gap:10px;margin-bottom:16px;">
+            <div style="flex:1;border:1.5px solid #a7f3d0;background:#ecfdf5;border-radius:10px;padding:10px;text-align:center;">
+              <div style="font-size:11px;color:#047857;font-weight:700;">आज आया</div>
+              <div style="font-size:18px;font-weight:800;color:#065f46;">${fmtINR(dayT.sales)}</div>
+            </div>
+            <div style="flex:1;border:1.5px solid #fecdd3;background:#fff1f2;border-radius:10px;padding:10px;text-align:center;">
+              <div style="font-size:11px;color:#be123c;font-weight:700;">आज गया</div>
+              <div style="font-size:18px;font-weight:800;color:#be123c;">${fmtINR(dayT.gaya)}</div>
+            </div>
+            <div style="flex:1;border:1.5px solid #c7d2fe;background:#eef2ff;border-radius:10px;padding:10px;text-align:center;">
+              <div style="font-size:11px;color:#3730a3;font-weight:700;">आज बचा</div>
+              <div style="font-size:18px;font-weight:800;color:#312e81;">${fmtINR(dayT.bacha)}</div>
+            </div>
+          </div>
+
+          <div style="font-size:13px;font-weight:800;color:#3730a3;margin-bottom:6px;">${esc(mName)} महीने का कुल हिसाब</div>
+          <div style="display:flex;gap:10px;margin-bottom:18px;">
+            <div style="flex:1;border:2px solid #a7f3d0;background:#ecfdf5;border-radius:10px;padding:12px;text-align:center;">
+              <div style="font-size:12px;color:#047857;font-weight:700;">कुल आया</div>
+              <div style="font-size:20px;font-weight:800;color:#065f46;">${fmtINR(monT.sales)}</div>
+            </div>
+            <div style="flex:1;border:2px solid #fecdd3;background:#fff1f2;border-radius:10px;padding:12px;text-align:center;">
+              <div style="font-size:12px;color:#be123c;font-weight:700;">कुल गया</div>
+              <div style="font-size:20px;font-weight:800;color:#be123c;">${fmtINR(monT.gaya)}</div>
+            </div>
+            <div style="flex:1;border:2px solid #818cf8;background:#eef2ff;border-radius:10px;padding:12px;text-align:center;">
+              <div style="font-size:12px;color:#3730a3;font-weight:700;">महीने की बचत</div>
+              <div style="font-size:20px;font-weight:800;color:#312e81;">${fmtINR(monT.bacha)}</div>
+            </div>
+          </div>
+
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+              <tr style="background:#eef2ff;text-align:left;">
+                <th style="padding:10px;border:1px solid #cbd5e1;">तारीख</th>
+                <th style="padding:10px;border:1px solid #cbd5e1;">विवरण</th>
+                <th style="padding:10px;border:1px solid #cbd5e1;text-align:right;">आया (+)</th>
+                <th style="padding:10px;border:1px solid #cbd5e1;text-align:right;">गया (−)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.length === 0 ? `<tr><td colspan="4" style="padding:18px;text-align:center;color:#64748b;border:1px solid #cbd5e1;">इस महीने कोई एंट्री दर्ज नहीं है</td></tr>` : rows.map(r => `
+                <tr>
+                  <td style="padding:9px 10px;border:1px solid #cbd5e1;white-space:nowrap;">${esc(r.date)}</td>
+                  <td style="padding:9px 10px;border:1px solid #cbd5e1;">${esc(r.desc)}</td>
+                  <td style="padding:9px 10px;border:1px solid #cbd5e1;text-align:right;color:#047857;font-weight:700;">${esc(r.inAmt)}</td>
+                  <td style="padding:9px 10px;border:1px solid #cbd5e1;text-align:right;color:#be123c;font-weight:700;">${esc(r.outAmt)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+        generateHindiPDF(html, `dukaan-hisab-${mPref}.pdf`);
+      }
+
+      function downloadShoppingListPDF() {
+        const empties = state.items.filter(i => i.empty);
+        const total = empties.reduce((sum, it) => sum + (Number(it.price) > 0 ? Number(it.price) : 0), 0);
+        const html = `
+          <div style="border-bottom:3px solid #d97706;padding-bottom:14px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-end;">
+            <div>
+              <div style="font-size:26px;font-weight:800;color:#b45309;">${esc(state.shopName)}</div>
+              <div style="font-size:15px;color:#475569;margin-top:4px;">होलसेल से लेने वाले सामान की लिस्ट (${empties.length} सामान)</div>
+            </div>
+            <div style="font-size:13px;color:#475569;">तारीख: ${fmtDate(todayStr())}</div>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:15px;">
+            <thead>
+              <tr style="background:#fef3c7;text-align:left;">
+                <th style="padding:10px;border:1px solid #fcd34d;width:60px;">नं.</th>
+                <th style="padding:10px;border:1px solid #fcd34d;">सामान का नाम</th>
+                <th style="padding:10px;border:1px solid #fcd34d;width:160px;text-align:right;">दाम (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${empties.length === 0 ? `<tr><td colspan="3" style="padding:20px;text-align:center;border:1px solid #fcd34d;color:#64748b;">कोई सामान लेना बाकी नहीं है</td></tr>` : empties.map((it, idx) => {
+                const p = Number(it.price);
+                return `
+                  <tr>
+                    <td style="padding:11px 10px;border:1px solid #e2e8f0;font-weight:700;">${idx + 1}</td>
+                    <td style="padding:11px 10px;border:1px solid #e2e8f0;font-weight:700;">${esc(it.name)}</td>
+                    <td style="padding:11px 10px;border:1px solid #e2e8f0;text-align:right;font-weight:700;color:${p > 0 ? '#0f172a' : '#94a3b8'};">${p > 0 ? fmtINR(p) : '____________'}</td>
+                  </tr>
+                `;
+              }).join('')}
+              ${empties.length > 0 ? `
+                <tr style="background:#ecfdf5;">
+                  <td colspan="2" style="padding:12px 10px;border:1px solid #a7f3d0;font-weight:800;font-size:16px;color:#065f46;text-align:right;">कुल जोड़ (Total)</td>
+                  <td style="padding:12px 10px;border:1px solid #a7f3d0;font-weight:800;font-size:18px;color:#065f46;text-align:right;">${total > 0 ? fmtINR(total) : '____________'}</td>
+                </tr>
+              ` : ''}
+            </tbody>
+          </table>
+        `;
+        generateHindiPDF(html, `samaan-list-${todayStr()}.pdf`);
+      }
+
+      function downloadWholesalePDF() {
+        const allT = calcTotalsForFilter(() => true);
+        const html = `
+          <div style="border-bottom:3px solid #1d4ed8;padding-bottom:14px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-end;">
+            <div>
+              <div style="font-size:26px;font-weight:800;color:#1d4ed8;">${esc(state.shopName)}</div>
+              <div style="font-size:15px;color:#475569;margin-top:4px;">होलसेल खरीदारी और बाकी हिसाब</div>
+            </div>
+            <div style="font-size:13px;color:#475569;">तारीख: ${fmtDate(todayStr())}</div>
+          </div>
+          <div style="display:flex;gap:12px;margin-bottom:20px;">
+            <div style="flex:1;border:2px solid #cbd5e1;border-radius:12px;padding:12px;text-align:center;">
+              <div style="font-size:12px;color:#475569;font-weight:700;">कुल माल लिया</div>
+              <div style="font-size:20px;font-weight:800;margin-top:4px;">${fmtINR(allT.whTotal)}</div>
+            </div>
+            <div style="flex:1;border:2px solid #a7f3d0;background:#ecfdf5;border-radius:12px;padding:12px;text-align:center;">
+              <div style="font-size:12px;color:#047857;font-weight:700;">कुल पैसा दिया</div>
+              <div style="font-size:20px;font-weight:800;color:#047857;margin-top:4px;">${fmtINR(allT.whPaid)}</div>
+            </div>
+            <div style="flex:1;border:2px solid #fecdd3;background:#fff1f2;border-radius:12px;padding:12px;text-align:center;">
+              <div style="font-size:12px;color:#be123c;font-weight:700;">देना बाकी</div>
+              <div style="font-size:20px;font-weight:800;color:#be123c;margin-top:4px;">${fmtINR(allT.whDue)}</div>
+            </div>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+              <tr style="background:#eff6ff;text-align:left;">
+                <th style="padding:10px;border:1px solid #bfdbfe;">तारीख</th>
+                <th style="padding:10px;border:1px solid #bfdbfe;">होलसेलर और सामान</th>
+                <th style="padding:10px;border:1px solid #bfdbfe;text-align:right;">कुल बिल</th>
+                <th style="padding:10px;border:1px solid #bfdbfe;text-align:right;">दिया</th>
+                <th style="padding:10px;border:1px solid #bfdbfe;text-align:right;">बाकी</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${state.wholesale.length === 0 ? `<tr><td colspan="5" style="padding:18px;text-align:center;color:#64748b;border:1px solid #bfdbfe;">अभी कोई होलसेल बिल नहीं है</td></tr>` : state.wholesale.map(w => `
+                <tr>
+                  <td style="padding:9px 10px;border:1px solid #cbd5e1;white-space:nowrap;">${fmtDate(w.dateStr)}</td>
+                  <td style="padding:9px 10px;border:1px solid #cbd5e1;"><b>${esc(w.shop)}</b>${w.itemsText ? ' — ' + esc(w.itemsText) : ''}</td>
+                  <td style="padding:9px 10px;border:1px solid #cbd5e1;text-align:right;font-weight:700;">${fmtINR(w.total)}</td>
+                  <td style="padding:9px 10px;border:1px solid #cbd5e1;text-align:right;color:#047857;font-weight:700;">${fmtINR(w.paid)}</td>
+                  <td style="padding:9px 10px;border:1px solid #cbd5e1;text-align:right;color:#be123c;font-weight:700;">${fmtINR(w.due)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+        generateHindiPDF(html, `wholesale-hisab-${todayStr()}.pdf`);
+      }
+
+      document.getElementById('btn-pdf-full').addEventListener('click', downloadFullHisabPDF);
+      document.getElementById('btn-pdf-list').addEventListener('click', downloadShoppingListPDF);
+      document.getElementById('btn-pdf-wholesale').addEventListener('click', downloadWholesalePDF);
+      document.getElementById('btn-header-pdf').addEventListener('click', () => {
+        if (activeTab === 'samaan') downloadShoppingListPDF();
+        else if (activeTab === 'wholesale') downloadWholesalePDF();
+        else downloadFullHisabPDF();
+      });
+
+      // ==================== MASTER RENDER ====================
+      function renderAll() {
+        document.getElementById('header-shop-name').textContent = state.shopName || 'मेरी दुकान';
+        const emptyCount = state.items.filter(i => i.empty).length;
+        ['desk-empty-badge', 'mob-empty-badge'].forEach(id => {
+          const el = document.getElementById(id);
+          if (emptyCount > 0) {
+            el.textContent = emptyCount;
+            el.classList.remove('hidden');
+          } else {
+            el.classList.add('hidden');
+          }
+        });
+
+        if (activeTab === 'hisab') renderHisab();
+        if (activeTab === 'samaan') renderSamaan();
+        if (activeTab === 'wholesale') renderWholesale();
+        if (window.lucide) lucide.createIcons();
+      }
+
+      switchTab('hisab');
+    })();
+  </script>
+</body>
+</html>
